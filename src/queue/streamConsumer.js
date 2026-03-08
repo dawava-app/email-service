@@ -1,14 +1,24 @@
-const Redis = require('ioredis');
 const { streamName, redis, maxRetries } = require('../config');
 const logger = require('../utils/logger');
 const { validateEmailPayload } = require('../validation');
 const { renderTemplate } = require('../services/templateService');
-const { sendViaMailjet, buildMessage } = require('../services/sendProvider');
 const { checkAndSet } = require('../utils/idempotencyStore');
 const { randomUUID } = require('crypto');
 
 const GROUP = 'email_service_group';
 const SUPPORTED_SCHEMA_VERSION = '1.0';
+
+let sendProvider;
+function getSendProvider() {
+  if (!sendProvider) {
+    sendProvider = require('../services/sendProvider');
+  }
+  return sendProvider;
+}
+
+function getRedisClient() {
+  return require('ioredis');
+}
 
 function parseEntry(entry) {
   const obj = {};
@@ -54,8 +64,9 @@ async function processPayloadEntry({
 }) {
   const validatePayload = deps.validateEmailPayload || validateEmailPayload;
   const renderTemplateImpl = deps.renderTemplate || renderTemplate;
-  const buildMessageImpl = deps.buildMessage || buildMessage;
-  const sendViaMailjetImpl = deps.sendViaMailjet || sendViaMailjet;
+  const provider = (deps.buildMessage && deps.sendViaMailjet) ? null : getSendProvider();
+  const buildMessageImpl = deps.buildMessage || provider.buildMessage;
+  const sendViaMailjetImpl = deps.sendViaMailjet || provider.sendViaMailjet;
   const checkAndSetImpl = deps.checkAndSet || checkAndSet;
   const loggerRef = deps.logger || logger;
 
@@ -101,6 +112,7 @@ async function processPayloadEntry({
 }
 
 async function startConsumer() {
+  const Redis = getRedisClient();
   const client = redis.url
     ? new Redis(redis.url)
     : new Redis({ host: redis.host, port: redis.port, password: redis.password });
