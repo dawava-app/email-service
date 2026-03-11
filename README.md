@@ -24,6 +24,58 @@ npm run dev
 ```
 Service runs on `PORT` (default 5060).
 
+## Docker Deployment (Compose)
+
+Container stack includes:
+- `email-api`: HTTP API only (`RUN_API=true`, `RUN_CONSUMER=false`)
+- `email-consumer`: stream consumer only (`RUN_API=false`, `RUN_CONSUMER=true`)
+- `redis`: backing Redis instance with persisted data volume
+
+### 1) Configure environment
+```bash
+cp .env.example .env
+# required for real sends and protected ingress:
+# MAILJET_API_KEY, MAILJET_API_SECRET, EMAIL_DEFAULT_FROM, EMAIL_SERVICE_AUTH_TOKEN
+```
+
+### 2) Build and start
+```bash
+docker compose up -d --build
+```
+
+### 3) Verify health
+```bash
+docker compose ps
+curl http://localhost:5060/health
+```
+
+### 4) View logs
+```bash
+docker compose logs -f email-api
+docker compose logs -f email-consumer
+```
+
+### Run a single role only
+API only:
+```bash
+docker compose up -d redis email-api
+```
+
+Consumer only:
+```bash
+docker compose up -d redis email-consumer
+```
+
+### Stop and remove containers
+```bash
+docker compose down
+```
+
+To also remove Redis persisted data:
+```bash
+docker compose down -v
+```
+
 ## REST Send Example
 ```bash
 curl -X POST http://localhost:5060/email/send \

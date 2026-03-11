@@ -19,6 +19,8 @@ function parseAllowlist(value) {
 module.exports = {
   env: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT || '5060', 10),
+  runApi: parseBoolean(process.env.RUN_API, true),
+  runConsumer: parseBoolean(process.env.RUN_CONSUMER, true),
   streamName: process.env.REDIS_STREAM_EMAIL || 'email_events',
   maxRetries: parseInt(process.env.EMAIL_MAX_RETRIES || '5', 10),
   serviceAuthToken: process.env.EMAIL_SERVICE_AUTH_TOKEN || '',

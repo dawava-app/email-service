@@ -1,0 +1,15 @@
+node_modules
+npm-debug.log*
+.git
+.github
+.vscode
+coverage
+.nyc_output
+tmp
+dist
+build
+docs
+tests
+.env
+.env.local
+.env.*.local
