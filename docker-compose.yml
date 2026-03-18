@@ -23,7 +23,7 @@ services:
       RUN_API: "true"
       RUN_CONSUMER: "false"
     ports:
-      - "5060:5060"
+      - "${EMAIL_SERVICE_PORT}:5060"
     depends_on:
       redis:
         condition: service_healthy
