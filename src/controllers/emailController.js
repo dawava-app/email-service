@@ -1,5 +1,6 @@
 const { renderTemplate, renderRowTemplate } = require('../services/templateService');
 const { sendViaMailjet, buildMessage } = require('../services/sendProvider');
+const { checkAndSet } = require('../utils/idempotencyStore');
 const { parseSheetFromFile, parseSheetFromUrl } = require('../utils/sheetParser');
 const config = require('../config');
 
@@ -34,17 +35,7 @@ async function sendEmailDirect(req, res, next) {
 async function bulkTemplatedSend(req, res, next) {
   try {
     const { headers, rows, template, subjectTemplate, dryRun } = req.body || {};
-    if (!Array.isArray(headers) || !headers.length) {
-      const err = new Error('headers array required'); err.status = 400; throw err;
-    }
     const emailIdx = headers.findIndex(h => String(h).toLowerCase() === 'email');
-    if (emailIdx === -1) { const err = new Error("headers must include 'email' column"); err.status = 400; throw err; }
-    if (!Array.isArray(rows) || !rows.length) {
-      const err = new Error('rows array required'); err.status = 400; throw err;
-    }
-    if (typeof template !== 'string' || !template.trim()) {
-      const err = new Error('template string required'); err.status = 400; throw err;
-    }
     const subjTpl = typeof subjectTemplate === 'string' && subjectTemplate.trim() ? subjectTemplate : 'Notification';
     const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -111,26 +102,13 @@ async function bulkTemplatedSend(req, res, next) {
 async function bulkTemplatedSendSheet(req, res, next) {
   try {
     const { template, subjectTemplate, dryRun, sheetUrl } = req.body || {};
-    if (typeof template !== 'string' || !template.trim()) { const err = new Error('template string required'); err.status = 400; throw err; }
     const subjTpl = typeof subjectTemplate === 'string' && subjectTemplate.trim() ? subjectTemplate : 'Notification';
     let headers, rows;
 
     if (req.file) {
       ({ headers, rows } = await parseSheetFromFile(req.file));
     } else if (sheetUrl) {
-      if (!config.allowRemoteSheetUrl) {
-        const err = new Error('sheetUrl is disabled by configuration');
-        err.status = 403;
-        throw err;
-      }
-      if (!Array.isArray(config.sheetUrlAllowlist) || config.sheetUrlAllowlist.length === 0) {
-        const err = new Error('sheetUrl allowlist is required when remote URL mode is enabled');
-        err.status = 503;
-        throw err;
-      }
       ({ headers, rows } = await parseSheetFromUrl(sheetUrl, { allowlist: config.sheetUrlAllowlist }));
-    } else {
-      const err = new Error('sheet file (field name sheet) or sheetUrl required'); err.status = 400; throw err;
     }
 
     if (!Array.isArray(headers) || !headers.length) { const err = new Error('parsed headers empty'); err.status = 400; throw err; }
