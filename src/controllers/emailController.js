@@ -1,17 +1,11 @@
-const { validateEmailPayload } = require('../validation');
 const { renderTemplate, renderRowTemplate } = require('../services/templateService');
 const { sendViaMailjet, buildMessage } = require('../services/sendProvider');
-const { checkAndSet } = require('../utils/idempotencyStore');
 const { parseSheetFromFile, parseSheetFromUrl } = require('../utils/sheetParser');
 const config = require('../config');
 
 async function sendEmailDirect(req, res, next) {
   try {
     const payload = req.body;
-    validateEmailPayload(payload);
-    if (!checkAndSet(payload)) {
-      return res.status(202).json({ status: 'duplicate_ignored' });
-    }
     if (payload.templateId && !payload.text && !payload.html) {
       const rendered = renderTemplate(payload.templateId, payload.templateVersion, payload.templateVars || {});
       payload.text = rendered; // simple text fallback
